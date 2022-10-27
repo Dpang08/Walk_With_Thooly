@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "1040542845428",
+    "project_id": "walk-with-thooly",
+    "storage_bucket": "walk-with-thooly.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1040542845428:android:817fa47320a42b911bd1a1",
+        "android_client_info": {
+          "package_name": "com.thooly.walk_with_thooly"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1040542845428-js2ttn14lruhvb1v027e9emk3i7270i3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB-jEp25horuZNbgUMLPrvxIDlyHf79zOg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1040542845428-js2ttn14lruhvb1v027e9emk3i7270i3.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
