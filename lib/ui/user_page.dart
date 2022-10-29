@@ -52,115 +52,124 @@ class _UserPageState extends State<UserPage> {
       id = _service.userInfo.value.userid!;
     }
 
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(10.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  _showThumbnail(),
-                  const SizedBox(width: 15,),
-                  GestureDetector(
-                      onTap: () {
-                        _service.printAll();
-                      },
-                      child: Text(id, style: TextStyle(fontSize: 22, color: kColor.userid))
-                  ),
-                ],
-              ),
-              IconButton(
-                  onPressed: () => Get.toNamed(kRoutes.SETTINGS),
-                  icon: const Icon(Icons.settings, size: 30, color: Colors.black26)
-              ),
-            ],
-          ),
-        ),
-        const _HorizontalSpacer(),
-
-        const SizedBox(height: 5),
-        Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      height: MediaQuery.of(context).size.height,
+      width: MediaQuery.of(context).size.width,
+      padding: const EdgeInsets.all(1),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(10.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(
                   children: [
-                    GestureDetector(
-                      onTap: () => setState(() {
-                        isAllUsers = true;
-                        _getUserList();
-                      }),
-                      child: Container(
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: isAllUsers ? Colors.blue[100]: null,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.black12)
-                        ),
-                        padding: const EdgeInsets.all(5),
-                        margin: const EdgeInsets.only(left:15),
-                        child: Text('Ranking All Users'.tr,  style: const TextStyle(fontSize:16, color: Colors.black54)),
-                      ),
-                    ),
+                    _showThumbnail(),
                     const SizedBox(width: 15,),
                     GestureDetector(
-                      onTap: () => setState(() {
-                        isAllUsers = false;
-                        _getUserList();
-                      }),
-                      child: Container(
-                        decoration: BoxDecoration(
-                            color: isAllUsers ? null : Colors.blue[100],
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.black12)
-                        ),
-                        padding: const EdgeInsets.all(5),
-                        margin: const EdgeInsets.only(right:15),
-                        child: Text('Friends'.tr,  style: const TextStyle(fontSize:16, color: Colors.black54)),
-                      ),
+                        onTap: () {
+                          _service.printAll();
+                          _service.allFriends.clear();
+                          _fbService.getAllFriends();
+                          _service.top10Friends.clear();
+                          _fbService.getTop10Friends();
+                          // _fbService.getMyWalkData();
+                          // _fbService.generateDummyUsers();
+                          // _fbService.generateDummyFriends();
+                          // _fbService.generateDummyWalking();
+                          // DateTime a = DateTime(2022, 10, 30, 1,0,0,0,0);
+                          // DateTime b = DateTime(2022, 10, 29, 2,0,0,0,0);
+                          // List<DateTime> c = [b, a];
+                          // print('$c');
+                          // c.sort((b, a) => a.compareTo(b));
+                          // print('$c');
+
+                        },
+                        child: Text(id, style: TextStyle(fontSize: 22, color: kColor.userid))
                     ),
                   ],
                 ),
-                const SizedBox(height: 10,),
-                Row(
-                  children: [
-                    const SizedBox(width: 20,),
-                    Text('Rank', style: textStyle,),
-                    SizedBox(width: width * 0.15,),
-                    Text('ID', style: textStyle),
-                    SizedBox(width: width * 0.30,),
-                    Text('kcal', style: textStyle),
-                    SizedBox(width: width * 0.12,),
-                    Text('Distance', style: textStyle)
-                  ],
+                IconButton(
+                    onPressed: () => Get.toNamed(kRoutes.SETTINGS),
+                    icon: const Icon(Icons.settings, size: 30, color: Colors.black26)
                 ),
-                _listUsers(height * ratio),
               ],
-            )
-        ),
-      ],
+            ),
+          ),
+          const _HorizontalSpacer(),
+          const SizedBox(height: 5),
+          Flexible(
+              fit: FlexFit.tight,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () => setState(() {
+                          isAllUsers = true;
+                          _getUserList();
+                        }),
+                        child: Container(
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: isAllUsers ? Colors.blue[100]: null,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.black12)
+                          ),
+                          padding: const EdgeInsets.all(5),
+                          margin: const EdgeInsets.only(left:15),
+                          child: Text('Ranking All Users'.tr,  style: const TextStyle(fontSize:16, color: Colors.black54)),
+                        ),
+                      ),
+                      const SizedBox(width: 15,),
+                      GestureDetector(
+                        onTap: () => setState(() {
+                          isAllUsers = false;
+                          _getUserList();
+                        }),
+                        child: Container(
+                          decoration: BoxDecoration(
+                              color: isAllUsers ? null : Colors.blue[100],
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.black12)
+                          ),
+                          padding: const EdgeInsets.all(5),
+                          margin: const EdgeInsets.only(right:15),
+                          child: Text('Friends'.tr,  style: const TextStyle(fontSize:16, color: Colors.black54)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10,),
+                  Row(
+                    children: [
+                      const SizedBox(width: 20,),
+                      Text('Rank', style: textStyle,),
+                      SizedBox(width: width * 0.15,),
+                      Text('ID', style: textStyle),
+                      SizedBox(width: width * 0.30,),
+                      Text('kcal', style: textStyle),
+                      SizedBox(width: width * 0.12,),
+                      Text('Distance', style: textStyle)
+                    ],
+                  ),
+                  _listUsers(),
+                ],
+              )
+          ),
+        ],
+      ),
     );
   }
 
-  Future<List<UserModel>> _getUserList() async {
-    List<UserModel> data;
-    if (isAllUsers) {
-      data = await _fbService.getAllUsers();
-    } else {
-      data = await _fbService.getAllFriends();
-    }
-
-    return data;
-  }
-
-  Widget _listUsers(height) {
+  Widget _listUsers() {
     return FutureBuilder(
         future: _getUserList(),
         builder: (BuildContext context, AsyncSnapshot snapshot) {
           if (snapshot.hasData && snapshot.connectionState == ConnectionState.done) {
-            return _allUsers(height, snapshot.data);    // return list<UserInfo>
+            return _allUsers(snapshot.data);    // return list<UserInfo>
           } else if (snapshot.connectionState == ConnectionState.waiting) {
             return const Padding(
               padding: EdgeInsets.only(top: 100),
@@ -170,8 +179,8 @@ class _UserPageState extends State<UserPage> {
             return Container(
               padding: const EdgeInsets.all(30),
               alignment: Alignment.center,
-              child: const Center(child: Text('Error occurred while getting user dataset from server.'
-                  '\nPlease try again later.')),
+              child: const Center(child: Text('Error occurred while getting user dataset from server. '
+                  'Please try again later.')),
             );
           } else {
             return const Padding(
@@ -183,114 +192,125 @@ class _UserPageState extends State<UserPage> {
     );
   }
 
-  Widget _allUsers(double height, users) {
+  Widget _allUsers(List<UserModel> users) {
     final width = MediaQuery.of(context).size.width;
     TextStyle textStyle = TextStyle(fontSize: 16, color: kColor.rankText);
     TextStyle textStyleMe = TextStyle(fontSize: 18, color: kColor.rankTextHighlight, fontWeight: FontWeight.w500);
 
-    return Container(
-      height: height,
-      margin: const EdgeInsets.only(left: 10, right: 10, top: 5),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(15),
-        color: kColor.decorationBox,
-      ),
-      padding: const EdgeInsets.only(left: 15, right: 15, top:5, bottom: 5),
-      child: ListView.builder(
-          physics: const BouncingScrollPhysics(),
-          itemCount: users.length,
-          itemBuilder: (BuildContext context, int index) {
-            /// set image url to download using cased network image
-            Widget thumbnail;
-            if (users[index].thumbnail!.isNotEmpty) {
-              thumbnail = CachedNetworkImage(
-                imageUrl: users[index].thumbnail!,
-                fit: BoxFit.fill,
-              );
-            } else {
-              thumbnail = Icon(CupertinoIcons.person_fill, color: kColor.emoji);
-            }
+    return Expanded(
+      child: Container(
+        margin: const EdgeInsets.only(left: 10, right: 10, top: 5, bottom: 5),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(15),
+          color: kColor.decorationBox,
+        ),
+        padding: const EdgeInsets.only(left: 15, right: 15, top:5, bottom: 5),
+        child: ListView.builder(
+            physics: const BouncingScrollPhysics(),
+            itemCount: users.length,
+            itemBuilder: (BuildContext context, int index) {
+              /// set image url to download using cased network image
+              Widget thumbnail;
+              if (users[index].thumbnail!.isNotEmpty) {
+                thumbnail = CachedNetworkImage(
+                  imageUrl: users[index].thumbnail!,
+                  fit: BoxFit.fill,
+                );
+              } else {
+                thumbnail = Icon(CupertinoIcons.person_fill, color: kColor.emoji);
+              }
 
-            return GestureDetector(
-              onTap: () {
-                _service.messageBuddy.value = users[index];
-                isAllUsers
-                    ? dialogAddFriend(context, users[index].userid!)
-                    : Get.toNamed(kRoutes.MESSAGE_PAGE);
-              },
-              child: Container(
-                height: 50,
-                color: kColor.decorationBox,
-                alignment: Alignment.centerLeft,
-                child: FittedBox(
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 20,
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text('$index',
-                            style: TextStyle(fontSize: 14, color: kColor.rankText),
+              return GestureDetector(
+                onTap: () {
+                  _service.messageBuddy.value = users[index];
+                  isAllUsers
+                      ? dialogAddFriend(context, users[index].userid!)
+                      : Get.toNamed(kRoutes.MESSAGE_PAGE);
+                },
+                child: Container(
+                  height: 50,
+                  color: kColor.decorationBox,
+                  alignment: Alignment.centerLeft,
+                  child: FittedBox(
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 20,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text('$index',
+                              style: TextStyle(fontSize: 14, color: kColor.rankText),
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 10,),
-                      SizedBox(
-                        height: 30,
-                        width: 30,
-                        child: ClipRRect(
-                            borderRadius: BorderRadius.circular(35),
-                            child: thumbnail,
-                            // child: Icon(CupertinoIcons.person_fill, color: kColor.emoji)
-                        ),
-                      ),
-                      const SizedBox(width: 10,),
-                      SizedBox(
-                        width: width * 0.2,
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: Text(users[index].userid!,
-                            style: users[index].userid == _service.userInfo.value.userid   // 내가 순위에 있으면 highlight
-                                ? textStyleMe
-                                : textStyle,
+                        const SizedBox(width: 10,),
+                        SizedBox(
+                          height: 30,
+                          width: 30,
+                          child: ClipRRect(
+                              borderRadius: BorderRadius.circular(35),
+                              child: thumbnail,
+                              // child: Icon(CupertinoIcons.person_fill, color: kColor.emoji)
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 10,),
-                      SizedBox(
-                        width: width * 0.2,
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerRight,
-                          child: Text('${users[index].totalKcal!}',
-                            style: users[index].userid == _service.userInfo.value.userid   // 내가 순위에 있으면 highlight
-                                ? textStyleMe
-                                : textStyle,
+                        const SizedBox(width: 10,),
+                        SizedBox(
+                          width: width * 0.2,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(users[index].userid!,
+                              style: users[index].userid == _service.userInfo.value.userid   // 내가 순위에 있으면 highlight
+                                  ? textStyleMe
+                                  : textStyle,
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 20,),
-                      SizedBox(
-                        width: width * 0.2,
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerRight,
-                          child: Text('${users[index].totalDist!.toStringAsFixed(1)}km',
-                            style: users[index].userid == _service.userInfo.value.userid   // 내가 순위에 있으면 highlight
-                                ? textStyleMe
-                                : textStyle,
+                        const SizedBox(width: 10,),
+                        SizedBox(
+                          width: width * 0.2,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerRight,
+                            child: Text('${users[index].totalKcal!.toInt()}',
+                              style: users[index].userid == _service.userInfo.value.userid   // 내가 순위에 있으면 highlight
+                                  ? textStyleMe
+                                  : textStyle,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 20,),
+                        SizedBox(
+                          width: width * 0.2,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerRight,
+                            child: Text('${users[index].totalDist!.toStringAsFixed(1)}km',
+                              style: users[index].userid == _service.userInfo.value.userid   // 내가 순위에 있으면 highlight
+                                  ? textStyleMe
+                                  : textStyle,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            );
-          }
+              );
+            }
+        ),
       ),
     );
+  }
+
+  Future<List<UserModel>> _getUserList() async {
+    List<UserModel> data;
+    if (isAllUsers) {
+      data = await _fbService.getAllUsers();
+    } else {
+      data = await _fbService.getAllFriends();
+    }
+    return data;
   }
 
   Widget _showThumbnail() {

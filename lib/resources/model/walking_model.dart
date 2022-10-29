@@ -2,11 +2,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 class WalkingModel {
-  String? timeStartAt;
-  String? timeEndAt;
+  DateTime? timeStartAt;
+  DateTime? timeEndAt;
   double? distance;
-  double? steps;
   double? kcal;
+  int? steps;
 
   WalkingModel({
     this.timeStartAt,
@@ -18,8 +18,8 @@ class WalkingModel {
 
   Map<String, dynamic> toFirestore() {
     return {
-      'timeStartAt': timeStartAt!,
-      'timeEndAt': timeEndAt!,
+      'timeStartAt': timeStartAt!.toIso8601String(),
+      'timeEndAt': timeEndAt!.toIso8601String(),
       'distance': distance!,
       'steps': steps!,
       'kcal': kcal!,
@@ -28,8 +28,8 @@ class WalkingModel {
 
   factory WalkingModel.fromMap(Map<String, dynamic> data) {
     return WalkingModel(
-      timeStartAt: data['timeStartAt'],
-      timeEndAt: data['timeEndAt'],
+      timeStartAt: DateTime.parse(data['timeStartAt']),
+      timeEndAt: DateTime.parse(data['timeEndAt']),
       distance: data['distance'],
       steps: data['steps'],
       kcal: data['kcal'],
@@ -39,8 +39,8 @@ class WalkingModel {
   factory WalkingModel.fromFirestore(DocumentSnapshot documentSnapshot) {
     final data = documentSnapshot.data() as Map;
     return WalkingModel(
-      timeStartAt: data['timeStartAt'],
-      timeEndAt: data['timeEndAt'],
+      timeStartAt: DateTime.parse(data['timeStartAt']),
+      timeEndAt: DateTime.parse(data['timeEndAt']),
       distance: data['distance'],
       steps: data['steps'],
       kcal: data['kcal'],

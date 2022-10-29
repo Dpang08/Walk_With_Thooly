@@ -18,8 +18,6 @@ class kConst {
   static String titleJournal = 'Journal';
   static String fileJournal = 'journal.txt';
   static String thumbnailImage = 'user_thumbnail.jpg';
-  static double weight = 65.0;   // kg
-  static double height = 175.0;  // cm
   static double walkingFactor = 0.57;
 }
 
@@ -28,6 +26,7 @@ class FbCollection {
   static const FRIENDS = 'Friends';
   static const WALKING = 'Walking';
   static const MESSAGE = 'Message';
+  static const PLACES = 'Places';
 }
 
 class kStorageKey {

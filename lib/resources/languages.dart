@@ -86,6 +86,15 @@ class Languages extends Translations {
       'Next': '다음',
       'agreement_subtitle': '보다 원할한 서비스 이용 및 사용자의 데이터를 보다 안전하게 '
           '관리하기 위해서 아래의 약관 동의 및 회원 가입이 필요합니다.',
+      'Location permission granted': '위치 정보 접근 권한이 허용되었습니다',
+      'permission_title': '사용자 위치 정보 요청',
+      'location permission': '캐디보이(앱)은 사용자의 위치 데이터를 수집하여 하기와 같은 서비스(기능)을 제공합니다.\n'
+          '- 골프장(코스) 검색 -\n'
+          '- 거리 측정 및 통계 분석 -\n'
+          '- 골프 코스에 위치(마커) 표시 -\n',
+      'permission_info': '캐디보이(앱)은 사용자의 현재 위치 기반으로 보다 빠른 골프 비거리를 측정하기 위해 앱이 닫혀 있거나 사용중이 '
+          '아닐때도 기기의 위치 데이터를 수집합니다.\n이외의 용도로는 위치 데이터가 사용되지 않습니다.\n'
+          '앱의 정상적인 작동을 위해 위치데이터가 필수이며, 요청 거부시 기능이 제한됩니다.',
 
       'year': '년',
       'Year': '',
@@ -119,6 +128,14 @@ class Languages extends Translations {
     'en_US': {
       'agreement_subtitle': 'To store and manage your personal information safely, '
           'it is required to agree the terms below and sign up.',
+      'permission_title': 'Request for location permission',
+      'location permission': 'CaddiBoy(app) requests the location permission as essential information to perform:\n'
+          '- searching golf course\n'
+          '- driver distance analysis\n'
+          '- show position markers on google map\n',
+      'permission_info': 'CaddiBoy collects location data to enable ball flight tracking and distance even when the app is closed or not in use.\n'
+          'If Location permission denied, most service(features) will be limited. ',
+
     }
   };
 }

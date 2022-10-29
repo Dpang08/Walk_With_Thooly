@@ -115,7 +115,7 @@ class _MessagingState extends State<Messaging> {
         : Padding(
             padding: const EdgeInsets.only(top: 100),
             child: Center(
-                child: Text('No friends to follow'.tr, style: const TextStyle(
+                child: Text('No Message from friends'.tr, style: const TextStyle(
                     fontSize: 18, color: Colors.blueGrey))
             )
           );

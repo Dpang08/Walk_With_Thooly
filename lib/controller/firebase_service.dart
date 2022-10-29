@@ -1,26 +1,29 @@
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:get_storage/get_storage.dart';
+import 'package:uuid/uuid.dart';
 
 import 'package:path_provider/path_provider.dart';
 import 'package:get/get.dart';
 import 'dart:io';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:walk_with_thooly/resources/kConstant.dart';
+import 'package:walk_with_thooly/resources/model/place_model.dart';
 import 'package:walk_with_thooly/resources/model/user_model.dart';
 import 'package:walk_with_thooly/resources/model/chat_model.dart';
-import 'state_controller.dart';
 import 'package:walk_with_thooly/resources/model/walking_model.dart';
+import 'state_controller.dart';
 
 final StateService _service = Get.put(StateService());
 final GetStorage _storage = Get.put(GetStorage(kStorageKey.CONTAINER));
 
 class FirebaseService extends GetxService {
-  RxList<UserModel> top10Friends = <UserModel>[].obs;
+  var uuid = const Uuid();
 
-  final CollectionReference _reference = FirebaseFirestore.instance
+  final CollectionReference _userReference = FirebaseFirestore.instance
       .collection(FbCollection.USERS);
 
   /// add new user with user info
@@ -31,7 +34,7 @@ class FirebaseService extends GetxService {
     /// upload to firestore db
     final data = newUser.toFirestore();
     FirebaseFirestore.instance.enableNetwork()
-        .then((_) => _reference
+        .then((_) => _userReference
             .doc(newUser.userid) // user id
             .set(data)
     ).catchError((err) {
@@ -43,7 +46,7 @@ class FirebaseService extends GetxService {
   Future<void> addFriend(String userid) async {
     Map<String, dynamic> data = {'timeStamp': DateTime.now().toIso8601String()};
 
-    await _reference
+    await _userReference
         .doc(_service.userInfo.value.userid)
         .collection(FbCollection.FRIENDS)
         .doc(userid)
@@ -54,7 +57,7 @@ class FirebaseService extends GetxService {
   /// update(change) the password
   Future<void> updatePassword(String userid, String newPassword) async {
     Map<String, String> data = {'password': newPassword};
-    await _reference
+    await _userReference
         .doc(userid)
         .update(data);
   }
@@ -67,7 +70,7 @@ class FirebaseService extends GetxService {
     };
     /// save to local storage to reuse for auto login
     _storage.write(kStorageKey.USERINFO, _service.userInfo.value.toFirestore());
-    await _reference
+    await _userReference
         .doc(_service.userInfo.value.userid)
         .update(data);
   }
@@ -75,7 +78,7 @@ class FirebaseService extends GetxService {
   /// check ID if existed already in the database
   Future<bool> checkID(String userid) async {
     bool isExisted = false;
-    QuerySnapshot snapshot = await _reference.get();
+    QuerySnapshot snapshot = await _userReference.get();
     final ids = snapshot.docs.map((e) => e.id).toList();
     isExisted = ids.contains(userid);
     return isExisted;
@@ -124,64 +127,190 @@ class FirebaseService extends GetxService {
         }
       }
     }
-
     ///  if userid & password matched -> get userinfo and store to local
     if (isIdFound && isPasswordMatched) {
       UserModel userInfo = UserModel.fromFirestore(userFound.docs.first);
       _service.userInfo.value = userInfo; //save to state controller
-      _getProfileImageFromFb(); // get profile image from firebase storage and save to local
-      _service.userInfo.value.printAll(); // print to check found user info
+      _getProfileImageFromFb();   // get profile image from firebase storage and save to local
     }
     return [isIdFound, isPasswordMatched];
   }
 
-  Future<List<UserModel>> getAllUsers() async {
+  Future<void> getMyWalkData() async {
+    DateTime now = DateTime.now();
+    String lastOneMonth = DateTime(now.year, now.month - 1, now.day, 0,0,0,0,0).toIso8601String();
+    List<DateTime> walkingDays = [];
+
     if (_service.userInfo.value.userid !=null && _service.userInfo.value.userid!.isNotEmpty) {
-      QuerySnapshot snapshot = await _reference.get();
-      List<UserModel> allData = snapshot.docs.map((e) => UserModel.fromFirestore(e)).toList();
-      allData.sort((b, a) => a.totalKcal!.compareTo(b.totalKcal!));
-      return allData;
-    } else {
-      return [];    // user가 로그아웃하거나, 로그인 하지 않은 상태에서는 읽어오지 않음
+      double sumKcal = 0;
+      double sumDist = 0;
+      /// get walking model for last one month
+      QuerySnapshot data = await _userReference
+          .doc(_service.userInfo.value.userid)
+          .collection(FbCollection.WALKING)
+          .where('timeStartAt', isGreaterThanOrEqualTo: lastOneMonth)
+          .get();
+      /// calc sum of kcal and distance for last one month
+      List<WalkingModel> walkingData = data.docs.map((e) =>
+          WalkingModel.fromFirestore(e)).toList();
+      for (var d in walkingData) {
+        sumKcal += d.kcal!;
+        sumDist += d.distance!;
+        walkingDays.add(d.timeStartAt!);
+      }
+      /// calc total days
+      _service.userInfo.value.totalDays = walkingData.length;
+      /// calc streak
+      walkingDays.sort((b, a) => a.compareTo(b));
+      List<int> streak = [];
+      for (var i=0; i < walkingDays.length; i++) {    // 연속된 날짜 1, 아니면 0으로 리스트 만들기
+        if (i > 0 && i < walkingDays.length) {
+          if (walkingDays[i-1].day - walkingDays[i].day == 1) {
+            streak.add(1);
+          } else {
+            streak.add(0);
+          }
+        }
+      }
+      int count = 0;
+      int maxCount = 0;
+      for (var i=0; i < streak.length-1; i++) {    // 연속된 날짜 구하기
+        if (streak[i] == streak[i+1]) {
+          count += 1;
+        } else {
+          if (maxCount < count) {
+            maxCount = count;
+            count = 0;
+          }
+        }
+      }
+      if (maxCount <= count) {
+        maxCount = count;
+      }
+      /// set streak days
+      _service.userInfo.value.streakDays = maxCount == 0 ? 0 : maxCount + 2;  // max + 1 total streak
+      /// save walking model result (total kcal, total sum)
+      _service.userInfo.value.totalKcal = sumKcal;
+      _service.userInfo.value.totalDist = sumDist;
+      /// update users to firestore
+      _updateUserToFirestore();
     }
+  }
+
+  Future<void> _updateUserToFirestore() async {
+    await _userReference
+        .doc(_service.userInfo.value.userid)
+        .update(_service.userInfo.value.toFirestore())
+        .catchError((err) => Get.snackbar('error@firestore', 'update: $err'));
+  }
+
+  Future<List<UserModel>> getAllUsers() async {
+    List<UserModel> allUsers = [];
+
+    if (_service.userInfo.value.userid !=null && _service.userInfo.value.userid!.isNotEmpty) {
+      if (_service.allUsers.isEmpty) {
+        QuerySnapshot snapshot = await _userReference.get();
+        List<UserModel> users = snapshot.docs.map((e) => UserModel.fromFirestore(e)).toList();
+        // allUsers = snapshot.docs.map((e) => UserModel.fromFirestore(e)).toList();
+        /// sorting users by total kcal
+        // users.sort((b, a) => a.totalKcal!.compareTo(b.totalKcal!));
+        /// save to service controller
+        // _service.allUsers.value = users;
+
+        if (users.isNotEmpty) {
+          for (var e in users) {
+            UserModel userUpdated = await _getWalkingModel(e);
+            allUsers.add(userUpdated);
+          }
+          /// sorting users by total kcal
+          allUsers.sort((b, a) => a.totalKcal!.compareTo(b.totalKcal!));
+          /// save to service controller
+          _service.allUsers.value = allUsers;
+        }
+
+      } else {
+        allUsers = _service.allUsers;
+      }
+    }
+    return allUsers;
+  }
+
+  Future<UserModel> _getWalkingModel(UserModel userModel) async {
+    DateTime now = DateTime.now();
+    String lastOneMonth = DateTime(now.year, now.month - 1, now.day, 0,0,0,0,0).toIso8601String();
+
+    double sumKcal = 0;
+    double sumDist = 0;
+    /// get walking model for last one month
+    QuerySnapshot data = await _userReference
+        .doc(userModel.userid)
+        .collection(FbCollection.WALKING)
+        .where('timeStartAt', isGreaterThanOrEqualTo: lastOneMonth)
+        .get();
+    /// calc sum of kcal and distance for last one month
+    List<WalkingModel> walkingData = data.docs.map((e) =>
+        WalkingModel.fromFirestore(e)).toList();
+    for (var d in walkingData) {
+      sumKcal += d.kcal!;
+      sumDist += d.distance!;
+    }
+    /// save walking model result (total kcal, total sum)
+    userModel.totalKcal = sumKcal;
+    userModel.totalDist = sumDist;
+    return userModel;
   }
 
   Future<List<UserModel>> getAllFriends() async {
+    List<UserModel> friends = [];
     /// user 가 로그인 되어 있는 상태에서만 친구 조회 가능
     if (_service.userInfo.value.userid !=null && _service.userInfo.value.userid!.isNotEmpty) {
-      /// get list of friends
-      QuerySnapshot snapshot = await _reference
-          .doc(_service.userInfo.value.userid)
-          .collection(FbCollection.FRIENDS)
-          .get();
-      List<String> friendsId = snapshot.docs.map((e) => e.id).toList();
-      /// get user info of friends
-      List<UserModel> friends = [];
-      for (var e in friendsId) {
-        DocumentSnapshot snapshot = await _reference.doc(e).get();
-        friends.add(UserModel.fromFirestore(snapshot));
+      if (_service.allFriends.isEmpty) {
+        /// get list of friends
+        QuerySnapshot snapshot = await _userReference
+            .doc(_service.userInfo.value.userid)
+            .collection(FbCollection.FRIENDS)
+            .get();
+        List<String> friendsId = snapshot.docs.map((e) => e.id).toList();
+        /// get user info of friends
+        if (friendsId.isNotEmpty) {
+          for (var e in friendsId) {    // user model 읽어오기
+            /// get user Model
+            DocumentSnapshot snapshot = await _userReference.doc(e).get();
+            UserModel user = UserModel.fromFirestore(snapshot);
+            /// get walking model of friends
+            UserModel userUpdated = await _getWalkingModel(user);
+            /// 친구 추가
+            friends.add(userUpdated);
+            // friends.add(user);
+          }
+          /// including myself in the list to compare
+          UserModel myModelUpdated = await _getWalkingModel(_service.userInfo.value);
+          /// 친구 추가 리스트에 '나' 추가
+          friends.add(myModelUpdated);
+          /// sorting friends by total kcal
+          friends.sort((b, a) => a.totalKcal!.compareTo(b.totalKcal!));
+          // friends.sort((b, a) => a.totalKcal!.compareTo(b.totalKcal!));
+          /// save to service controller
+          _service.allFriends.value = friends;
+        }
+      } else {
+        friends = _service.allFriends;
       }
-      /// including myself in the list to compare
-      friends.add(_service.userInfo.value);
-      /// sorting friends by total kcal
-      friends.sort((b, a) => a.totalKcal!.compareTo(b.totalKcal!));
-      return friends;
-    } else {
-      return [];
     }
+    return friends;
   }
 
   Future<List<UserModel>> getTop10Friends() async {
+    List<UserModel> friends = [];
     /// user 가 로그인 되어 있는 상태에서만 친구 조회 가능
     if (_service.userInfo.value.userid !=null && _service.userInfo.value.userid!.isNotEmpty) {
-      /// get all friends
-      List<UserModel> friends = [];
+      if (_service.top10Friends.isEmpty) {
+        if (_service.allFriends.isEmpty) {
+          friends = await getAllFriends();
+        } else {
+          friends = _service.allFriends;
+        }
 
-      friends = await getAllFriends();
-
-      if (friends.isNotEmpty) {
-        /// include myself in friends list to calc top 10
-        friends.add(_service.userInfo.value);
         /// sort top 10
         int size = friends.length;
         if (size > 10) {
@@ -189,16 +318,86 @@ class FirebaseService extends GetxService {
         }
         if (size > 1) {
           friends.sort((b, a) => a.totalKcal!.compareTo(b.totalKcal!));
-          top10Friends.value = friends.sublist(0, size);
-          return friends.sublist(0, size);
-        } else {
-          return [];
+          friends = friends.sublist(0, size);
+          /// save to service controller
+          _service.top10Friends.value = friends;
         }
       } else {
-        return [];
+        friends = _service.top10Friends;
       }
-    } else {
-      return [];
+    }
+    return friends;
+  }
+
+  Future<void> updateWalkingModel(WalkingModel walk) async {
+    if (_service.userInfo.value.userid != null) {
+      String id = DateTime.now().toIso8601String();
+
+      FirebaseFirestore.instance.enableNetwork()
+          .then((_) => FirebaseFirestore.instance
+          .collection(FbCollection.USERS)
+          .doc(_service.userInfo.value.userid)
+          .collection(FbCollection.WALKING)
+          .doc(id).set(walk.toFirestore())
+          .catchError((err) {
+        Get.snackbar('error@firebase', 'walking: $err');
+      })
+      );
+    }
+  }
+
+  Future<void> uploadPlace() async {
+    if (_service.userInfo.value.userid != null) {
+      PlaceModel place = _service.placeMarked.value;
+      /// create a reference to the file
+      Reference storageRef = FirebaseStorage.instance.ref()
+          .child('places')
+          .child('${uuid.v4()}.jpg');
+
+      if (_service.imagePlace.value.isNotEmpty) {
+        File imageFile = File(_service.imagePlace.value);
+
+        /// upload image to firebase storage
+        UploadTask uploadTask = storageRef.putFile(imageFile);
+        String url;
+
+        /// get image url from firebase storage
+        await uploadTask.whenComplete(() {
+          storageRef.getDownloadURL().then((imageUrl) {
+            url = imageUrl.toString();
+            /// upload image url to firestore
+            if (url.isNotEmpty) {
+              place.imageUrl = url;
+              FirebaseFirestore.instance.enableNetwork()
+                  .then((_) =>
+                  FirebaseFirestore.instance
+                      .collection(FbCollection.PLACES)
+                      .doc()
+                      .set(place.toFirestore())
+              ).catchError((err) {
+                Get.snackbar('error@firebase', 'places: $err');
+              });
+            }
+          });
+        });
+      }
+    }
+  }
+
+  Future<void> getPlaces() async {
+    if (_service.userInfo.value.userid !=null && _service.userInfo.value.userid!.isNotEmpty) {
+      if (_service.places.isEmpty) {
+        QuerySnapshot snapshot = await FirebaseFirestore.instance.collection(FbCollection.PLACES).get();
+        List<PlaceModel> places = snapshot.docs.map((e) => PlaceModel.fromFirestore(e)).toList();
+        /// make list of markers to show
+        for (var e in places) {
+          Marker marker = Marker(
+            markerId: MarkerId('${e.lat}'),
+            position: LatLng(e.lat!, e.lng!),
+          );
+          _service.markers.add(marker);
+        }
+      }
     }
   }
 
@@ -248,7 +447,7 @@ class FirebaseService extends GetxService {
             if (url.isNotEmpty) {
               Map<String, String> data = {'thumbnail': url};
               FirebaseFirestore.instance.enableNetwork()
-                  .then((_) => _reference
+                  .then((_) => _userReference
                   .doc(_service.userInfo.value.userid)  // user id
                   .update(data)
               ).catchError((err) {
@@ -358,34 +557,25 @@ class FirebaseService extends GetxService {
 
   /// test only --> todo remove for release
   Future<void> generateDummyUsers() async {
-    Map<String, dynamic> userinfo = {
-      'type': 'admin',
-      'userid': 'master',
-      'username': 'master',
-      'gender': 'female',
-      'password': '111111',
-      'thumbnail': '',
-      'email': 'thoolyMaster@email.com',
-      'height': 150 + Random().nextInt(40),
-      'weight': 50 + Random().nextInt(50),
-      'totalKcal': 600 + Random().nextInt(1000),
-      'createdAt': DateTime.now().toIso8601String(),
-      'totalDays': 32 + Random().nextInt(100),
-      'streakDays': 1 + Random().nextInt(30),
-      'totalDist': 40 + Random().nextDouble() * 50,
-      'streakDist': 10 + Random().nextDouble() * 30,
-      'startAt': '',
-      'startStreakAt': '',
-    };
+    UserModel masterUser = UserModel(
+        type: 'admin',
+        userid: 'master',
+        username: 'master',
+        gender: 'female',
+        password: '111111',
+        thumbnail: '',
+        email: 'thoolyMaster@email.com',
+        createdAt: DateTime.now(),
+    );
     FirebaseFirestore.instance.enableNetwork()
         .then((_) =>
         FirebaseFirestore.instance
             .collection(FbCollection.USERS)
             .doc('master')
-            .set(userinfo)
+            .set(masterUser.toFirestore())
     );
 
-    for (int i = 1; i <= 30; i++) {
+    for (int i = 1; i <= 20; i++) {
       String id = 'user#$i';
       String name = 'username#$i';
       String gender = 'male';
@@ -397,41 +587,32 @@ class FirebaseService extends GetxService {
         gender = 'female';
       }
 
-      Map<String, dynamic> userinfo = {
-        'type': type,
-        'userid': id,
-        'username': name,
-        'gender': gender,
-        'password': '111111',
-        'email': '$name@email.com',
-        'height': 150 + Random().nextInt(40),
-        'weight': 50 + Random().nextInt(50),
-        'totalKcal': 600 + Random().nextInt(1000),
-        'thumbnail': '',
-        'createdAt': DateTime.now().toIso8601String(),
-        'totalDays': 32 + Random().nextInt(100),
-        'streakDays': 10 + Random().nextInt(30),
-        'totalDist': 40 + Random().nextDouble() * 50,
-        'streakDist': 10 + Random().nextDouble() * 30,
-        'startAt': '',
-        'startStreakAt': '',
-      };
+      UserModel userinfo = UserModel(
+        type: type,
+        userid: id,
+        username: name,
+        gender: gender,
+        password: '111111',
+        thumbnail: '',
+        email: '$name@email.com',
+        createdAt: DateTime.now(),
+      );
 
       FirebaseFirestore.instance.enableNetwork()
           .then((_) =>
           FirebaseFirestore.instance
               .collection(FbCollection.USERS)
               .doc(id)
-              .set(userinfo)
+              .set(userinfo.toFirestore())
       );
     }
   }
 
   void generateDummyFriends() {
-    Map<String, dynamic> d = {'timeStamp':''};
+    Map<String, dynamic> d = {'timeStamp':DateTime.now().toIso8601String()};
     for (int i = 1; i <= 15; i++) {
       String id = 'user#$i';
-      _reference
+      _userReference
           .doc('master')
           .collection(FbCollection.FRIENDS)
           .doc(id)
@@ -457,22 +638,28 @@ class FirebaseService extends GetxService {
               .set(data)
       );
     }
-
   }
 
   void generateDummyWalking() {
     /// sample for master id
-    for (int i = 1; i <= 30; i++) {
+    for (int i = 1; i <= 20; i++) {
       String id;
+      int day;
 
-      id = DateTime(2022,10,i,12,1,0,0,0).toIso8601String();
+      if (i % 8 == 0) {
+        id = DateTime(2022,09,i,12,1,0,0,0).toIso8601String();
+        day = 9;
+      } else {
+        id = DateTime(2022,10,i,12,1,0,0,0).toIso8601String();
+        day = 10;
+      }
 
       Map<String, dynamic> data = {
-        'timeStartAt': DateTime(2022,10,i,12,0,0,0,0).toIso8601String(),
-        'timeEndAt': DateTime(2022,10,i,12,12,0,0,0).toIso8601String(),
+        'timeStartAt': DateTime(2022,day,i,12,0,0,0,0).toIso8601String(),
+        'timeEndAt': DateTime(2022,day,i,12,12,0,0,0).toIso8601String(),
         'distance': Random().nextDouble() * 10,
         'steps': Random().nextInt(7000) + 1500,
-        'kcal': Random().nextInt(200) + 100,
+        'kcal': 100 + Random().nextDouble() * 500,
       };
 
       FirebaseFirestore.instance.enableNetwork()
@@ -486,32 +673,31 @@ class FirebaseService extends GetxService {
     }
 
     /// sample for user friends
-    for (int i = 1; i <= 30; i++) {
-      String userid = 'user#$i';
-      for (int i = 1; i <= 30; i++) {
-        String id;
-
-        id = DateTime(2022,10,i,12,1,0,0,0).toIso8601String();
-
-        Map<String, dynamic> data = {
-          'timeStartAt': DateTime(2022,10,i,12,0,0,0,0).toIso8601String(),
-          'timeEndAt': DateTime(2022,10,i,12,12,0,0,0).toIso8601String(),
-          'distance': Random().nextDouble() * 10,
-          'steps': Random().nextInt(7000) + 1500,
-          'kcal': Random().nextInt(200) + 100,
-        };
-
-        FirebaseFirestore.instance.enableNetwork()
-            .then((_) =>
-            FirebaseFirestore.instance
-                .collection(FbCollection.USERS)
-                .doc(userid)
-                .collection(FbCollection.WALKING)
-                .doc(id).set(data)
-        );
-      }
-    }
-
+    // for (int i = 1; i <= 10; i++) {
+    //   String userid = 'user#$i';
+    //   for (int i = 1; i <= 20; i++) {
+    //     String id;
+    //
+    //     id = DateTime(2022,10,i,12,1,0,0,0).toIso8601String();
+    //
+    //     Map<String, dynamic> data = {
+    //       'timeStartAt': DateTime(2022,10,i,12,0,0,0,0).toIso8601String(),
+    //       'timeEndAt': DateTime(2022,10,i,12,12,0,0,0).toIso8601String(),
+    //       'distance': Random().nextDouble() * 10,
+    //       'steps': Random().nextInt(7000) + 1500,
+    //       'kcal': 100 + Random().nextDouble() * 500,
+    //     };
+    //
+    //     FirebaseFirestore.instance.enableNetwork()
+    //         .then((_) =>
+    //         FirebaseFirestore.instance
+    //             .collection(FbCollection.USERS)
+    //             .doc(userid)
+    //             .collection(FbCollection.WALKING)
+    //             .doc(id).set(data)
+    //     );
+    //   }
+    // }
   }
 
 }

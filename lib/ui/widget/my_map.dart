@@ -5,13 +5,16 @@ import 'package:location/location.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:pedometer/pedometer.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'package:walk_with_thooly/controller/state_controller.dart';
 import 'package:walk_with_thooly/controller/gps_controller.dart';
 import 'package:walk_with_thooly/resources/kConstant.dart';
+import 'package:walk_with_thooly/controller/firebase_service.dart';
 
 final StateService _service = Get.put(StateService());
 final GpsService _gpsService = Get.put(GpsService());
+final FirebaseService _fbService = Get.put(FirebaseService());
 
 class MyGoogleMap extends StatefulWidget {
   const MyGoogleMap({Key? key}) : super(key: key);
@@ -34,6 +37,7 @@ class _MyGoogleMapState extends State<MyGoogleMap> {
   late StreamSubscription _stepStreamSubscription;
   final Stopwatch _stopwatch = Stopwatch();   // for elapsed time (hh:mm:ss)
   String status = 'stop';
+  Timer? _timer;
 
   @override
   void initState() {
@@ -41,6 +45,7 @@ class _MyGoogleMapState extends State<MyGoogleMap> {
     _initLiveLocation();
     _initCurrentLocation();    // init location to set map initPosition
     _initPlatformState();
+    _getMarkers();
   }
 
   @override
@@ -60,6 +65,10 @@ class _MyGoogleMapState extends State<MyGoogleMap> {
     });
   }
 
+  void _getMarkers() async {
+    await _fbService.getPlaces();
+  }
+
   void _initCurrentLocation() async {
     final loc = await _location.getLocation().catchError((err) {
       Get.snackbar('error@getLocation', '$err');
@@ -69,9 +78,6 @@ class _MyGoogleMapState extends State<MyGoogleMap> {
   }
 
   void _initPlatformState() async {
-    print('---> _initPlatformState()');
-    // _stepCountStream = Pedometer.stepCountStream;
-
     /// activity recognition permission
     if (await Permission.activityRecognition.isGranted) {
       // _stepStreamSubscription = _stepCountStream.listen((event) {});
@@ -96,12 +102,12 @@ class _MyGoogleMapState extends State<MyGoogleMap> {
   }
 
   void _onData(StepCount step) {
+    _service.stepsFromOS.value = step.steps;
     if (_service.isPedometerStarted.value) {
-      _service.steps.value = step.steps - _service.initStep.value;      // 현재 걸음수 계산
+      _service.steps.value = step.steps - _service.initStep.value;      // 현재 총 걸음수 계산
     } else {
       _service.initStep.value = step.steps;   // 초기 걸음수 저장
     }
-    print('---> onData: $step');
   }
 
   void _onError(err) {
@@ -120,6 +126,24 @@ class _MyGoogleMapState extends State<MyGoogleMap> {
     _gpsService.currentLocation = position.target.obs;
   }
 
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 2), (timer) {
+      _calcWalking();
+      // print('---> init steps: ${_service.initStep.value}');
+      // print('---> steps: ${_service.steps.value}');
+      // print('---> os steps: ${_service.stepsFromOS.value}');
+      // _service.elapsedTime.value = ElapsedTime(seconds: _stopwatch.elapsed.inSeconds);
+    });
+  }
+
+  void _stopTimer() {
+    setState(() {
+      if (_timer != null) {
+        _timer!.cancel();
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     double height = MediaQuery.of(context).size.height;
@@ -127,7 +151,15 @@ class _MyGoogleMapState extends State<MyGoogleMap> {
     return Obx (() => Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _mapWidget(mapHeight),
+        Stack(
+            children: [
+              _mapWidget(mapHeight),
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: _markerButton(),
+              ),
+            ]
+        ),
         Expanded(child: _workoutPanel()),
       ],
     ));
@@ -137,24 +169,53 @@ class _MyGoogleMapState extends State<MyGoogleMap> {
     return Container(
       height: height,
       padding: const EdgeInsets.all(1.0),
-      child: GoogleMap(
-        scrollGesturesEnabled: true,
-        zoomControlsEnabled: true,
-        // minMaxZoomPreference: const MinMaxZoomPreference(16.5, 18),
-        mapType: MapType.normal,
-        onMapCreated: _onMapCreated,
-        onCameraMove: _onCameraMove,
-        initialCameraPosition: CameraPosition(
-          target: _gpsService.initLocation.value,
-          zoom: 15,   // 16
-        ),
-        myLocationEnabled: true,
-        compassEnabled: true,
-        mapToolbarEnabled: true,
-        // trafficEnabled: true,
-        // myLocationButtonEnabled: true,
-      ),
+      child: myLocation != null
+          ? GoogleMap(
+              scrollGesturesEnabled: true,
+              zoomControlsEnabled: true,
+              // minMaxZoomPreference: const MinMaxZoomPreference(16.5, 18),
+              mapType: MapType.normal,
+              markers: _service.markers,
+              onMapCreated: _onMapCreated,
+              onCameraMove: _onCameraMove,
+              initialCameraPosition: CameraPosition(
+                target: myLocation!,
+                zoom: 15,   // 16
+              ),
+              myLocationEnabled: true,
+              compassEnabled: true,
+              mapToolbarEnabled: true,
+              // trafficEnabled: true,
+              // myLocationButtonEnabled: true,
+            )
+          : null,
     );
+  }
+
+  Widget _markerButton() {
+    return ElevatedButton(
+        onPressed: () => _addMarker(),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.lightGreen
+        ),
+        child: Text('Add marker'.tr)
+    );
+  }
+
+  void _addMarker() async {
+    XFile? image = await ImagePicker().pickImage(source: ImageSource.camera);
+    if (image != null) {
+      _service.imagePlace.value = image.path;
+      /// save location to place model
+      _service.placeMarked.value.timeAt = DateTime.now();
+      _service.placeMarked.value.lat = myLocation!.latitude ?? 0;
+      _service.placeMarked.value.lng = myLocation!.longitude ?? 0;
+      _service.placeMarked.value.creator = _service.userInfo.value.userid ?? '';
+      /// save to firebase
+      _fbService.uploadPlace();
+      /// add to list of marked place to show
+      _service.addPlace();
+    }
   }
 
   Widget _workoutPanel() {
@@ -191,9 +252,9 @@ class _MyGoogleMapState extends State<MyGoogleMap> {
   Widget _showDistance() {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
-      children: const [
-        Text('2.4', style: TextStyle(fontSize: 25)),
-        Text('distance(km)', style: TextStyle(fontSize: 16)),
+      children: [
+        Text(_service.distance.value.toStringAsFixed(2), style: const TextStyle(fontSize: 25)),
+        const Text('distance(km)', style: TextStyle(fontSize: 16)),
       ],
     );
   }
@@ -202,33 +263,41 @@ class _MyGoogleMapState extends State<MyGoogleMap> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        ElevatedButton(onPressed: () {
-          setState(() {
-            status = 'START';
-          });
-          _startWalking();
-        }, child: const Text('Start')),
+        SizedBox(
+          width: 100,
+          child: ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  status = 'START';
+                });
+            _startWalking();
+          }, child: const Text('Start')),
+        ),
         SizedBox(
             width: 80,
             child: Center(child: Text(status, style: const TextStyle(fontSize: 20),))),
-        ElevatedButton(onPressed: () {
-          setState(() {
-            status = 'STOP';
-          });
-          _stopWalking();
-        }, child: const Text('Stop')),
+        SizedBox(
+          width: 100,
+          child: ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  status = 'STOP';
+                });
+            _stopWalking();
+          }, child: const Text('Stop')),
+        ),
       ],
     );
   }
 
-  // Widget _showElapsedTime() {
-  //   return Column(
-  //     children: [
-  //       const Text('Elapsed time', style: TextStyle(fontSize: 18)),
-  //       Text(_service.elapsedTime.value.toString(), style: const TextStyle(fontSize: 18))
-  //     ],
-  //   );
-  // }
+  Widget _showElapsedTime() {
+    return Column(
+      children: [
+        const Text('Elapsed time', style: TextStyle(fontSize: 18)),
+        Text(_service.elapsedTime.value.toString(), style: const TextStyle(fontSize: 18))
+      ],
+    );
+  }
 
   Widget _calories() {
     return Column(
@@ -249,31 +318,43 @@ class _MyGoogleMapState extends State<MyGoogleMap> {
     );
   }
 
-  void _calcCalories() {
-    double caloriesBurnedPerMile = kConst.walkingFactor * (kConst.weight * 2.2);
-    double strip = kConst.height * 0.415;
-    double stepCountMile = 160934.4 / strip;
+  void _calcWalking() {
+    /// calc kcal based on the variables
+    double caloriesBurnedPerMile = kConst.walkingFactor * (_service.myWeight.value * 2.2);
+    double stride = _service.myHeight.value * 0.43;
+    double stepCountMile = 160934.4 / stride;
     double conversationFactor = caloriesBurnedPerMile / stepCountMile;
     _service.kcal.value = _service.steps.value * conversationFactor;
+    _service.distance.value = ((stride/100) * _service.steps.value) / 1000;
   }
 
   void _startWalking() {
-    _stopwatch.start();
-    Timer.periodic(const Duration(seconds: 1), (timer) {
-      _service.elapsedTime.value = ElapsedTime(seconds: _stopwatch.elapsed.inSeconds);
-    });
+    // _stopwatch.start();
+    _startTimer();
     /// set pedometer
     _service.isPedometerStarted.value = true;
+    /// set current step to 0
+    // _service.initStep.value = _service.stepsFromOS.value;
+    /// set walk model to record my walking
+    _service.myWalk.value.reset();
+    _service.resetWalking();
+    _service.myWalk.value.timeStartAt = DateTime.now();
   }
 
   void _stopWalking() {
-    _stopwatch.stop();
+    // _stopwatch.stop();
+    _stopTimer();
     _service.isPedometerStarted.value = false;
     _service.stepsResult.value = _service.steps.value;  // 최종 걸음수 저장
-    _stepStreamSubscription.cancel().then((value) {
-      _service.steps.value = 0;
-    });
-    _calcCalories();
+    // _stepStreamSubscription.cancel();
+    _calcWalking();
+    /// record walking performance and upload to firestore
+    _service.myWalk.value.distance = _service.distance.value;
+    _service.myWalk.value.steps = _service.steps.value;
+    _service.myWalk.value.kcal = _service.kcal.value;
+    _service.myWalk.value.timeEndAt = DateTime.now();
+    /// upload to firestore
+    _fbService.updateWalkingModel(_service.myWalk.value);
   }
 
   /// get gps current location manually by request

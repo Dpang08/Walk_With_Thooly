@@ -204,8 +204,11 @@ class _CreateAccountState extends State<CreateAccount> {
                 : Icon(Icons.check_circle_outlined, color: Colors.green[600],)    // if ID not existed - show check icon
               : Container(),
           TextButton(
-            child: Text('Check ID'.tr,
-              style: TextStyle(fontSize: 18, color: Colors.green[600]),),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text('Check ID'.tr,
+                style: TextStyle(fontSize: 14, color: Colors.green[600]),),
+            ),
             onPressed: () async {
               bool isExisted;
               String? title;
@@ -428,16 +431,11 @@ class _CreateAccountState extends State<CreateAccount> {
             username: _username,
             email: _email,
             gender: _gender[0] ? 'male' : 'female',
-            createdAt: DateTime.now().toIso8601String(),
-            thumbnail: '',
-            totalDays: 0,
-            streakDays: 0,
+            totalKcal: 0,
             totalDist: 0,
-            streakDist: 0,
-            startAt: '',
-            startStreakAt: '',
-            // countryCode: '${Get.deviceLocale?.countryCode}',
-            // languageCode: '${Get.deviceLocale?.languageCode}',
+            totalSteps: 0,
+            totalDays: 0,
+            createdAt: DateTime.now(),
           );
           /// save user info to state service, local storage and upload to firestore db
           await _fbService.addNewUser(newUser).then((_) {
