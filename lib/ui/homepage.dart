@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter/cupertino.dart';
 
 import 'package:walk_with_thooly/controller/state_controller.dart';
 import 'package:walk_with_thooly/resources/kConstant.dart';
@@ -110,10 +112,67 @@ class _HomepageState extends State<Homepage> {
     );
   }
 
-  void _navItemTap(int idx) {
-    setState(() {
-      _service.navIndex.value = idx;
-    });
+  void _navItemTap(int idx) async {
+    if (idx == 1) {
+      bool isGranted = await _checkLocationPermission(context);
+      if (isGranted) {
+        setState(() {
+          _service.navIndex.value = 1;
+        });
+      }
+    } else {
+      setState(() {
+        _service.navIndex.value = idx;
+      });
+    }
+  }
+
+  Future<bool> _checkLocationPermission(context) async {
+    bool isGranted = await checkGranted();
+    if (!isGranted) {     // if not location access granted
+      _showDialogPermission(context);
+      return false;
+    } else {
+      return true;
+    }
+  }
+
+  Future<bool> checkGranted() async {
+    var status = await Permission.location.status;
+    if (status.isGranted) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  void _showDialogPermission(context) {
+    showCupertinoDialog(
+      context: context,
+      builder: (context) => Theme(
+        data: ThemeData.light(),
+        child: CupertinoAlertDialog(
+          title: Text('permission_title'.tr),
+          content: Text('permission_info'.tr),
+          actions: [
+            CupertinoDialogAction(
+                child: Text('Cancel'.tr),
+                onPressed: () => Get.back()
+            ),
+            CupertinoDialogAction(
+                child: Text('Confirm'.tr),
+                onPressed: () {
+                  Permission.location.request();
+                  Get.back();
+                  setState(() {
+                    _service.navIndex.value = 1;
+                  });
+                }
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
 }

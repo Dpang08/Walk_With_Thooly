@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:get/get.dart';
 
 class UserModel {
   String? type;   // admin, general
@@ -8,17 +9,18 @@ class UserModel {
   String? password;
   String? gender;
   String? email;
-  String? createdAt;
   String? thumbnail;
   int? totalDays;
   int? streakDays;
   int? height;     // 키
   int? weight;     // 몸무개
-  int? totalKcal;   // total kcal
+  int? totalSteps;
+  double? totalKcal;   // total kcal
   double? totalDist;    // distance in km
   double? streakDist;   // distance in km
-  String? startAt;    // day to begin walking
-  String? startStreakAt;    // day to be counted for streak
+  DateTime? createdAt;
+  DateTime? startAt;    // day to begin walking
+  DateTime? startStreakAt;    // day to be counted for streak
 
   UserModel({
     this.type,
@@ -29,6 +31,7 @@ class UserModel {
     this.email,
     this.height,
     this.weight,
+    this.totalSteps,
     this.totalKcal,
     this.createdAt,
     this.thumbnail,
@@ -47,18 +50,19 @@ class UserModel {
       'username': username!,
       'password': password!,
       'email': email!,
-      'height': height!,
-      'weight': weight!,
-      'totalKcal': totalKcal!,
-      'gender': gender!,
-      'createdAt': createdAt!,
-      'thumbnail': thumbnail!,
-      'totalDays': totalDays!,
-      'streakDays': streakDays!,
-      'totalDist': totalDist!,
-      'streakDist': streakDist!,
-      'startAt': startAt!,
-      'startStreakAt': startStreakAt!,
+      'height': height != null ? height! : 0,
+      'weight': weight != null ? weight! : 0,
+      'totalKcal': totalKcal != null ? totalKcal! : 0,
+      'totalSteps': totalSteps  != null ? totalSteps! : 0,
+      'gender': gender != null ? gender! : '',
+      'thumbnail': thumbnail != null ? thumbnail! : '',
+      'totalDays': totalDays != null ? totalDays! : 0,
+      'streakDays': streakDays != null ? streakDays! : 0,
+      'totalDist': totalDist != null ? totalDist! : 0,
+      'streakDist': streakDist != null ? streakDist! : 0,
+      'createdAt': createdAt!.toIso8601String(),
+      'startAt': startAt != null ? startAt!.toIso8601String() : '',
+      'startStreakAt': startStreakAt != null ? startStreakAt!.toIso8601String() : '',
     };
   }
 
@@ -71,16 +75,17 @@ class UserModel {
       email: data['email'],
       height: data['height'],
       weight: data['weight'],
-      totalKcal: data['totalKcal'],
+      totalKcal: data['totalKcal'].toDouble(),
+      totalSteps: data['totalSteps'],
       gender: data['gender'],
-      createdAt: data['createdAt'],
       thumbnail: data['thumbnail'],
       totalDays: data['totalDays'],
       streakDays: data['streakDays'],
-      totalDist: data['totalDist'],
-      streakDist: data['streakDist'],
-      startAt: data['startAt'],
-      startStreakAt: data['startStreakAt'],
+      totalDist: data['totalDist'].toDouble(),
+      streakDist: data['streakDist'].toDouble(),
+      createdAt: DateTime.parse(data['createdAt']),
+      startAt: data['startAt'] == '' ? null : DateTime.parse(data['startAt']),
+      startStreakAt: data['startStreakAt'] == '' ? null : DateTime.parse(data['startStreakAt']),
     );
   }
 
@@ -94,16 +99,17 @@ class UserModel {
       email: data['email'],
       height: data['height'],
       weight: data['weight'],
-      totalKcal: data['totalKcal'],
+      totalKcal: data['totalKcal'].toDouble(),
+      totalSteps: data['totalSteps'],
       gender: data['gender'],
-      createdAt: data['createdAt'],
       thumbnail: data['thumbnail'],
       totalDays: data['totalDays'],
       streakDays: data['streakDays'],
-      totalDist: data['totalDist'],
-      streakDist: data['streakDist'],
-      startAt: data['startAt'],
-      startStreakAt: data['startStreakAt'],
+      totalDist: data['totalDist'].toDouble(),
+      streakDist: data['streakDist'].toDouble(),
+      createdAt: DateTime.parse(data['createdAt']),
+      startAt: data['startAt'] == '' ? null : DateTime.parse(data['startAt']),
+      startStreakAt: data['startStreakAt'] == '' ? null : DateTime.parse(data['startStreakAt']),
     );
   }
 
@@ -117,6 +123,7 @@ class UserModel {
     height = null;
     weight = null;
     totalKcal = null;
+    totalSteps = null;
     createdAt = null;
     thumbnail = null;
     totalDays = null;
@@ -140,6 +147,7 @@ class UserModel {
     debugPrint('\t\t* gender : $gender');
     debugPrint('\t\t* createdAt : $createdAt');
     debugPrint('\t\t* thumbnail : $thumbnail');
+    debugPrint('\t\t* totalSteps : $totalSteps');
     debugPrint('\t\t* total Days : $totalDays');
     debugPrint('\t\t* streak Days : $streakDays');
     debugPrint('\t\t* total Dist : $totalDist');

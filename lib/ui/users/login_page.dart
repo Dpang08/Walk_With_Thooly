@@ -161,7 +161,7 @@ class _LoginState extends State<Login> {
             _queryResult = value;
             _isProgressingLogin = false;
           })).catchError((err) {
-            Get.snackbar('error@firebase', '$err');
+            Get.snackbar('error@firebase', 'find user: $err');
             setState(() {
               _isProgressingLogin = false;
             });
@@ -341,8 +341,8 @@ class _LoginState extends State<Login> {
           ),
       leading: Image.asset(kConst.kakaoImage, height: 30, width: 30,),
       onTap: () {
-        setState(() => _isProgressingKakao = true);
-        _kakaoLoginProcess();
+        // setState(() => _isProgressingKakao = true);
+        // _kakaoLoginProcess();
       }
     );
   }

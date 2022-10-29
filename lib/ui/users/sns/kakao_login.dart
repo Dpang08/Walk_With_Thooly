@@ -115,7 +115,7 @@ class KakaoLogin {
       gender: 'NA',
       // countryCode: '${Get.deviceLocale?.countryCode}',
       // languageCode: '${Get.deviceLocale?.languageCode}',
-      createdAt: DateTime.now().toIso8601String(),
+      createdAt: DateTime.now(),
     );
   }
 
