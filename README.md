@@ -94,5 +94,27 @@ Users log walks, see paths on a live map, pin places with photos, chat with frie
 
 ---
 
-## 🧱 Project Structure
+## 🔒 Privacy
+
+- Location and activity data are captured **only during active walking sessions**.  
+- All photos are **optional** and securely stored in **Firebase Storage**.  
+- The app stores only minimal user information (nickname, avatar, Kakao ID reference).  
+- Authentication and identity management are handled by the **Kakao SDK**, ensuring that no raw credentials are stored in the app.  
+- Cached session data (via GetStorage) is encrypted and used solely for user convenience.  
+- The app does **not** share or sell user data — all data access is scoped to the signed-in user only.
+
+---
+
+## 🛠️ Future Roadmap
+
+- 🗺️ **Adaptive GPS sampling** for better battery efficiency.  
+- 📍 **Basic map-matching algorithm** to smooth noisy GPS paths.  
+- 📊 **Weekly walking summaries** and **ranking rollups** for faster leaderboard updates.  
+- 💬 **Chat improvements** — message receipts, typing indicators, and image previews.  
+- 🔥 **Social features** — streak tracking, walking challenges, and team competitions.  
+- ☁️ **Offline mode** with background sync when the device reconnects.  
+- 🧩 **Modular analytics layer** for personalized health insights.
+
+
+
 
